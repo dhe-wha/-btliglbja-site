@@ -602,7 +602,7 @@
           <input type="email" name="email" placeholder="nama@email.com" required>
         </div>
         <div class="form-group">
-          <label>Pendidikan Terakhir</label>
+          <label>Pendidikan Terakhir *</label>
           <select name="pendidikan" required>
             <option value="">-- Pilih --</option>
             <option>SD/SMP</option>
@@ -613,7 +613,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Pengalaman Kerja</label>
+          <label>Pengalaman Kerja *</label>
           <select name="pengalaman" required>
             <option>Fresh Graduate</option>
             <option>1–2 Tahun</option>
@@ -626,7 +626,7 @@
           <input type="text" id="modal-posisi" name="posisi_dilamar" readonly style="background:#f1f5f9; color:#64748B;">
         </div>
         <div class="form-group full">
-          <label>Upload CV / Lamaran</label>
+          <label>Upload CV / Lamaran *</label>
           <label class="file-upload-label" for="cv-file">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <span id="file-label">Pilih file PDF/DOC (maks. 5 MB)</span>
@@ -638,6 +638,7 @@
           <textarea name="motivasi_catatan" placeholder="Tuliskan motivasi atau informasi tambahan…"></textarea>
         </div>
       </div>
+      <p id="form-error-msg" style="display:none;color:#ef4444;font-size:13px;margin-top:8px;text-align:center;">⚠️ Mohon lengkapi semua field yang wajib diisi.</p>
       <button type="submit" class="btn-submit">Kirim Lamaran →</button>
     </form>
   </div>
@@ -837,42 +838,31 @@
     });
   }
 
+  function markError(el, isError) {
+    el.style.borderColor = isError ? '#ef4444' : '';
+    el.style.background  = isError ? '#fff5f5' : '';
+  }
+
   async function submitForm(e) {
     e.preventDefault();
     const form      = e.target;
-    const btn       = form.querySelector('.btn-submit');
-    btn.textContent = 'Mengirim…';
-    btn.disabled    = true;
+    const fileInput = document.getElementById('cv-file');
 
-    try {
-      const fileInput = document.getElementById('cv-file');
-      const params    = new URLSearchParams();
-
-      // Ambil semua field bernama
-      ['nama','no_handphone','email','pendidikan','pengalaman','posisi_dilamar','motivasi_catatan']
-        .forEach(n => params.set(n, form.elements[n]?.value || ''));
-
-      // Encode file ke base64 jika ada
-      if (fileInput.files[0]) {
-        const f = fileInput.files[0];
-        params.set('file',     await toBase64(f));
-        params.set('filename', f.name);
-        params.set('mimetype', f.type);
-      }
-
-      await fetch(APPS_SCRIPT_URL, { method: 'POST', body: params });
-
-      alert('✅ Terima kasih! Lamaran Anda telah diterima. Tim HRD kami akan menghubungi Anda secepatnya.');
-      form.reset();
-      document.getElementById('file-label').textContent = 'Pilih file PDF/DOC (maks. 5 MB)';
-      closeModal();
-    } catch (err) {
-      alert('⚠️ Gagal mengirim lamaran. Coba lagi atau hubungi HRD langsung.');
-    } finally {
-      btn.textContent = 'Kirim Lamaran →';
-      btn.disabled    = false;
-    }
-  }
-
-  // Init
-  loadJobs();
+    // Validasi manual (karena file input hidden tidak bisa trigger native validation)
+    const checks = [
+      { el: form.elements['nama'],          val: form.elements['nama']?.value.trim() },
+      { el: form.elements['no_handphone'],  val: form.elements['no_handphone']?.value.trim() },
+      { el: form.elements['email'],         val: form.elements['email']?.value.trim() },
+      { el: form.elements['pendidikan'],    val: form.elements['pendidikan']?.value },
+      { el: form.elements['pengalaman'],    val: form.elements['pengalaman']?.value },
+    ];
+    let valid = true;
+    checks.forEach(c => {
+      const err = !c.val;
+      markError(c.el, err);
+      if (err) valid = false;
+    });
+    // Cek file
+    const fileLabel = document.querySelector('.file-upload-label');
+    const noFile = !fileInput.files[0];
+    fileLabel.style.borderColor =
