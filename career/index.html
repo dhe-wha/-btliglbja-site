@@ -603,7 +603,7 @@
         </div>
         <div class="form-group">
           <label>Pendidikan Terakhir</label>
-          <select name="pendidikan">
+          <select name="pendidikan" required>
             <option value="">-- Pilih --</option>
             <option>SD/SMP</option>
             <option>SMA/SMK</option>
@@ -614,7 +614,7 @@
         </div>
         <div class="form-group">
           <label>Pengalaman Kerja</label>
-          <select name="pengalaman">
+          <select name="pengalaman" required>
             <option>Fresh Graduate</option>
             <option>1–2 Tahun</option>
             <option>3–5 Tahun</option>
@@ -631,7 +631,7 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <span id="file-label">Pilih file PDF/DOC (maks. 5 MB)</span>
           </label>
-          <input type="file" id="cv-file" accept=".pdf,.doc,.docx" onchange="updateFileLabel(this)">
+          <input type="file" id="cv-file" accept=".pdf,.doc,.docx" onchange="updateFileLabel(this)" required>
         </div>
         <div class="form-group full">
           <label>Catatan (opsional)</label>
@@ -876,6 +876,3 @@
 
   // Init
   loadJobs();
-</script>
-</body>
-</html>
