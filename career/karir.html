@@ -534,7 +534,7 @@
         <div class="hero-stat-label">Posisi Terbuka</div>
       </div>
       <div class="hero-stat">
-        <div class="hero-stat-num">4</div>
+        <div class="hero-stat-num" id="stat-dept">—</div>
         <div class="hero-stat-label">Departemen</div>
       </div>
     </div>
@@ -563,16 +563,9 @@
     <div class="filter-count">Menampilkan <span id="count-shown">18</span> posisi</div>
   </div>
 
-  <!-- Dept Chips -->
+  <!-- Dept Chips (diisi otomatis dari sheet) -->
   <div class="dept-chips" id="dept-chips">
-    <button class="chip active" onclick="setChip(this, '')">Semua</button>
-    <button class="chip" onclick="setChip(this, 'Administrasi')">Administrasi</button>
-    <button class="chip" onclick="setChip(this, 'Dermaga')">Dermaga</button>
-    <button class="chip" onclick="setChip(this, 'Pabrik')">Pabrik</button>
-    <button class="chip" onclick="setChip(this, 'SHE')">SHE</button>
-    <button class="chip" onclick="setChip(this, 'Tanaman')">Tanaman &amp; HPT</button>
-    <button class="chip" onclick="setChip(this, 'TUK')">Tata Usaha Kayu</button>
-    <button class="chip" onclick="setChip(this, 'Teknik')">Teknik</button>
+    <button class="chip active" data-dept="" onclick="setChip(this, '')">Semua</button>
   </div>
 
   <!-- Job List -->
@@ -670,6 +663,9 @@
 
 <script>
   // ── DATA LOWONGAN dari recap_jobs ──
+  // ── URL Google Sheets CSV ──
+  const CSV_URL = 'https://docs.google.com/spreadsheets/d/1Tj2ZNCW04lOGoB5hcCxT_d3GvqdAj854daY4dVDN3sU/gviz/tq?tqx=out:csv&sheet=recap_jobs&range=A:J';
+
   // ── ICON MAP PER JABATAN (dari sheet jabatan) ──
   const ICON_JABATAN = {
     // Administrasi
@@ -776,20 +772,75 @@
     return COLOR_DEPT[departemen] || '#F8FAFC';
   }
 
-  // posting:true = dicentang di sheet recap_jobs kolom J
-  const JOBS = [
-    { id:'003', jabatan:'Operator Hammermill',     departemen:'Pabrik',                       bagian:'Proses',           kuota:2, dept_key:'Pabrik',  posting:true },
-    { id:'004', jabatan:'Mekanik',                 departemen:'Pabrik',                       bagian:'Maintenance',      kuota:5, dept_key:'Pabrik',  posting:true },
-    { id:'005', jabatan:'Operator Stove',          departemen:'Pabrik',                       bagian:'Proses',           kuota:3, dept_key:'Pabrik',  posting:true },
-    { id:'006', jabatan:'Operator Drier',          departemen:'Pabrik',                       bagian:'Proses',           kuota:1, dept_key:'Pabrik',  posting:true },
-    { id:'007', jabatan:'Admin QC & Laboratorium', departemen:'Pabrik',                       bagian:'QC & Laboratorium',kuota:1, dept_key:'Pabrik',  posting:true },
-    { id:'008', jabatan:'Electric',                departemen:'Pabrik',                       bagian:'Electric',         kuota:4, dept_key:'Pabrik',  posting:true },
-    { id:'009', jabatan:'Operator Bark Chipper',   departemen:'Pabrik',                       bagian:'Log Yard',         kuota:1, dept_key:'Pabrik',  posting:true },
-    { id:'012', jabatan:'Krani Konservasi',        departemen:'Safety, Health & Environment', bagian:'SHE',              kuota:1, dept_key:'SHE',     posting:true },
-    { id:'015', jabatan:'Supervisi Produksi',      departemen:'Tata Usaha Kayu',              bagian:'Tata Usaha Kayu',  kuota:1, dept_key:'TUK',     posting:true },
-    { id:'017', jabatan:'Driver Dump Truck',       departemen:'Teknik',                       bagian:'Teknik',           kuota:1, dept_key:'Teknik',  posting:true },
-    { id:'018', jabatan:'Driver Loss Bak Besar',   departemen:'Teknik',                       bagian:'Teknik',           kuota:1, dept_key:'Teknik',  posting:true },
-  ].filter(j => j.posting);
+  // ── PARSE CSV ──
+  function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
+    return lines.slice(1).map(line => {
+      const vals = [];
+      let cur = '', inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') { inQ = !inQ; }
+        else if (c === ',' && !inQ) { vals.push(cur); cur = ''; }
+        else { cur += c; }
+      }
+      vals.push(cur);
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = (vals[i] || '').replace(/^"|"$/g, '').trim());
+      return obj;
+    });
+  }
+
+  // ── LOAD DATA DARI SHEET ──
+  let ALL_JOBS = [];
+
+  async function loadJobs() {
+    document.getElementById('jobs-list').innerHTML = `
+      <div style="text-align:center;padding:48px;color:var(--muted);">
+        <div style="font-size:28px;margin-bottom:8px;">⏳</div>
+        <p style="font-size:14px;">Memuat data lowongan…</p>
+      </div>`;
+    try {
+      const res  = await fetch(CSV_URL);
+      const text = await res.text();
+      const rows = parseCSV(text);
+      ALL_JOBS = rows
+        .filter(r => r.posting === 'TRUE')
+        .map(r => ({
+          jabatan:    r.jabatan,
+          departemen: r.departemen,
+          bagian:     r.bagian,
+          kuota:      parseInt(r.kekurangan) || 0,
+          dept_key:   r.departemen,
+        }));
+
+      // update hero stats
+      const totalLowongan = ALL_JOBS.reduce((s, j) => s + j.kuota, 0);
+      const totalPosisi   = ALL_JOBS.length;
+      const totalDept     = new Set(ALL_JOBS.map(j => j.departemen)).size;
+      document.getElementById('stat-total').textContent  = totalLowongan;
+      document.getElementById('stat-posisi').textContent = totalPosisi;
+      document.getElementById('stat-dept').textContent   = totalDept;
+
+      // build dept filter options + chips
+      const depts = [...new Set(ALL_JOBS.map(j => j.departemen))].sort();
+      const sel = document.getElementById('dept-filter');
+      sel.innerHTML = '<option value="">Semua Departemen</option>' +
+        depts.map(d => `<option>${d}</option>`).join('');
+      const chipsEl = document.getElementById('dept-chips');
+      chipsEl.innerHTML = `<button class="chip active" data-dept="" onclick="setChip(this,'')">Semua</button>` +
+        depts.map(d => `<button class="chip" data-dept="${d}" onclick="setChip(this,'${d.replace(/'/g,"\\'")}')">${d}</button>`).join('');
+
+      renderJobs(ALL_JOBS);
+    } catch(e) {
+      document.getElementById('jobs-list').innerHTML = `
+        <div style="text-align:center;padding:48px;color:var(--muted);">
+          <div style="font-size:28px;margin-bottom:8px;">⚠️</div>
+          <p style="font-size:14px;">Gagal memuat data. Coba refresh halaman.</p>
+        </div>`;
+    }
+  }
 
   function renderJobs(list) {
     const container = document.getElementById('jobs-list');
@@ -838,28 +889,19 @@
   function filterJobs() {
     const q    = document.getElementById('search-input').value.toLowerCase();
     const dept = document.getElementById('dept-filter').value;
-    const list = JOBS.filter(j => {
+    const list = ALL_JOBS.filter(j => {
       const matchSearch = !q || j.jabatan.toLowerCase().includes(q) || j.departemen.toLowerCase().includes(q) || j.bagian.toLowerCase().includes(q);
       const matchDept   = !dept || j.departemen === dept;
       return matchSearch && matchDept;
     });
     renderJobs(list);
-    // sync chips
     document.querySelectorAll('.chip').forEach(c => {
-      const val = c.getAttribute('onclick').match(/'([^']*)'/)?.[1] ?? '';
-      c.classList.toggle('active', val === dept);
+      c.classList.toggle('active', c.dataset.dept === dept);
     });
   }
 
-  function setChip(el, deptKey) {
-    const select = document.getElementById('dept-filter');
-    // Map chip keys to full department names
-    const map = {
-      '': '', 'Administrasi': 'Administrasi', 'Dermaga': 'Dermaga',
-      'Pabrik': 'Pabrik', 'SHE': 'Safety, Health & Environment',
-      'Tanaman': 'Tanaman & HPT', 'TUK': 'Tata Usaha Kayu', 'Teknik': 'Teknik'
-    };
-    select.value = map[deptKey] ?? '';
+  function setChip(el, deptVal) {
+    document.getElementById('dept-filter').value = deptVal;
     filterJobs();
   }
 
@@ -887,7 +929,7 @@
   }
 
   // Init
-  renderJobs(JOBS);
+  loadJobs();
 </script>
 </body>
 </html>
