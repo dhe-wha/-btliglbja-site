@@ -492,7 +492,7 @@
         params.set('mimetype', f.type);
       }
 
-      await fetch(APPS_SCRIPT_URL, { method: 'POST', body: params });
+      await fetch(APPS_SCRIPT_URL, { method: 'POST', body: params, mode: 'no-cors' });
 
       alert('✅ Terima kasih! Lamaran Anda telah diterima. Tim HRD kami akan menghubungi Anda secepatnya.');
       closeModal();
