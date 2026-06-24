@@ -95,7 +95,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
   cursor:default;transition:transform .12s}
 .day-cell:hover{transform:scale(1.05);z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .day-num{font-weight:700;font-size:20px;margin-bottom:2px;display:flex;align-items:baseline;gap:4px}
-.day-ln{font-size:20px;font-weight:800;color:#c62828}
+.day-ln{font-size:18px;font-weight:400;color:#c62828}
 .day-st{font-size:15px;font-weight:600;opacity:.9}
 .day-time{font-size:9px;opacity:.7;margin-top:2px;line-height:1.4}
 .day-empty{min-height:58px}
@@ -608,7 +608,7 @@ function buildCard(kary, yr, mo) {
     cell.className = 'day-cell ' + cls;
 
     var holiday    = hDb[ymd] || null;
-    var lnBadge    = holiday ? '<span class="day-ln">LN</span>' : '';
+    var lnBadge    = holiday ? '<span class="day-ln"> - LN</span>' : '';
     var timeHtml   = aR
       ? '<div class="day-time">' + aR.masuk + '<br>' + aR.keluar + '</div>'
       : '';
