@@ -613,7 +613,7 @@ function buildCard(kary, yr, mo) {
       ? '<div class="day-time">' + aR.masuk + '<br>' + aR.keluar + '</div>'
       : '';
     var ketHtml    = holiday
-      ? '<div class="day-time">' + esc(holiday) + '</div>'
+      ? '<div class="day-time" style="text-align:right">' + esc(holiday) + '</div>'
       : '';
 
     if (holiday) tipLines.push('LN: ' + holiday);
