@@ -94,7 +94,8 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
 .day-cell{border-radius:5px;padding:5px;min-height:58px;font-size:11px;position:relative;
   cursor:default;transition:transform .12s}
 .day-cell:hover{transform:scale(1.05);z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.15)}
-.day-num{font-weight:700;font-size:20px;margin-bottom:2px}
+.day-num{font-weight:700;font-size:20px;margin-bottom:2px;display:flex;align-items:baseline;gap:4px}
+.day-ln{font-size:20px;font-weight:800;color:#c62828}
 .day-st{font-size:15px;font-weight:600;opacity:.9}
 .day-time{font-size:9px;opacity:.7;margin-top:2px;line-height:1.4}
 .day-empty{min-height:58px}
@@ -355,10 +356,28 @@ function processJadwal(rows) {
   return db;
 }
 
+// ── Process Kalender (Libur Nasional) ─────────────────────
+// cols: Bulan(0), Tanggal(1), Hari(2), K(3), Keterangan(4)
+function processKalender(rows) {
+  var db = {};
+  for (var i = 1; i < rows.length; i++) {
+    var row  = rows[i];
+    var kode = (row[3] || '').trim().toUpperCase();
+    if (kode !== 'LN') continue;
+    var tgl  = (row[1] || '').trim();
+    var ket  = (row[4] || '').trim();
+    var dk   = parseDateStr(tgl);
+    if (!dk) continue;
+    db[dk] = ket;
+  }
+  return db;
+}
+
 // ── Build merged data ─────────────────────────────────────
-function buildData(absenRowSets, jadwalRows) {
-  var absenDb  = processAbsen(absenRowSets);
-  var jadwalDb = processJadwal(jadwalRows);
+function buildData(absenRowSets, jadwalRows, kalenderRows) {
+  var absenDb    = processAbsen(absenRowSets);
+  var jadwalDb   = processJadwal(jadwalRows);
+  var holidayDb  = processKalender(kalenderRows || []);
 
   // karyList hanya dari jadwal (yang Tampil=TRUE) + absen yang ada di jadwal
   var karyList = Object.keys(jadwalDb).map(function(nik) {
@@ -378,7 +397,7 @@ function buildData(absenRowSets, jadwalRows) {
     absenClean[nik] = absenDb[nik].days;
   });
 
-  return { karyList: karyList, absenDb: absenClean, jadwalDb: jadwalDb };
+  return { karyList: karyList, absenDb: absenClean, jadwalDb: jadwalDb, holidayDb: holidayDb };
 }
 
 // ── Available months ──────────────────────────────────────
@@ -478,6 +497,7 @@ function buildCard(kary, yr, mo) {
   var nik      = kary.nik;
   var aDb      = DATA.absenDb[nik]           || {};
   var jDays    = DATA.jadwalDb[nik] ? DATA.jadwalDb[nik].days : {};
+  var hDb      = DATA.holidayDb              || {};
   var daysInM  = new Date(yr, mo, 0).getDate();
   var firstDow = new Date(yr, mo-1, 1).getDay();
 
@@ -587,14 +607,22 @@ function buildCard(kary, yr, mo) {
     var cell = document.createElement('div');
     cell.className = 'day-cell ' + cls;
 
-    var timeHtml = aR
+    var holiday    = hDb[ymd] || null;
+    var lnBadge    = holiday ? '<span class="day-ln">LN</span>' : '';
+    var timeHtml   = aR
       ? '<div class="day-time">' + aR.masuk + '<br>' + aR.keluar + '</div>'
       : '';
+    var ketHtml    = holiday
+      ? '<div class="day-time">' + esc(holiday) + '</div>'
+      : '';
+
+    if (holiday) tipLines.push('LN: ' + holiday);
 
     cell.innerHTML =
-      '<div class="day-num">' + d + '</div>' +
+      '<div class="day-num">' + d + lnBadge + '</div>' +
       '<div class="day-st">' + st + '</div>' +
       timeHtml +
+      ketHtml +
       '<div class="tip">' + tipLines.join('<br>') + '</div>';
 
     grid.appendChild(cell);
@@ -627,13 +655,15 @@ function main() {
   Promise.all([
     fetchCSV(BASE + 'Absen'),
     fetchCSV(BASE + 'Absen&tq=select%20*%20offset%20500'),
-    fetchCSV(BASE + 'jadwal')
+    fetchCSV(BASE + 'jadwal'),
+    fetchCSV(BASE + 'Kalender')
   ]).then(function(results) {
     document.getElementById('loading-msg').textContent = 'Memproses data…';
 
     DATA = buildData(
       [parseCSV(results[0]), parseCSV(results[1])],
-      parseCSV(results[2])
+      parseCSV(results[2]),
+      parseCSV(results[3])
     );
 
     availMonths = computeMonths(DATA);
