@@ -1,1 +1,661 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Report Absensi Karyawan</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-height:100vh}
 
+/* ── Loading / Error ── */
+#loading-screen,#error-screen{
+  position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;background:#f0f2f5;z-index:999;gap:16px}
+.spinner{width:48px;height:48px;border:5px solid #e0e0e0;border-top-color:#1a73e8;
+  border-radius:50%;animation:spin 0.9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading-msg{color:#555;font-size:14px}
+#error-box{background:#fff;border:1px solid #f44336;border-radius:8px;padding:24px 32px;
+  max-width:480px;text-align:center}
+#error-box h3{color:#f44336;margin-bottom:8px}
+#error-box p{font-size:13px;color:#555;margin-bottom:16px;line-height:1.6}
+.btn-retry{background:#1a73e8;color:#fff;border:none;border-radius:6px;
+  padding:10px 24px;font-size:14px;cursor:pointer}
+.btn-retry:hover{background:#1558b0}
+
+/* ── App shell ── */
+#app{display:none;padding:16px;max-width:1400px;margin:0 auto}
+
+/* ── Header ── */
+.hdr{background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff;
+  border-radius:12px;padding:20px 24px;margin-bottom:16px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hdr-title{font-size:20px;font-weight:700}
+.hdr-sub{font-size:12px;opacity:.85;margin-top:4px}
+.live-badge{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);
+  border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600}
+.live-dot{width:8px;height:8px;background:#4caf50;border-radius:50%;
+  animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* ── Controls ── */
+.controls{background:#fff;border-radius:10px;padding:14px 18px;margin-bottom:16px;
+  display:flex;flex-wrap:wrap;gap:12px;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.ctrl-group{display:flex;align-items:center;gap:6px}
+.ctrl-group label{font-size:12px;color:#666;white-space:nowrap}
+.controls select{border:1px solid #ddd;border-radius:6px;padding:6px 10px;
+  font-size:13px;background:#fff;cursor:pointer;max-width:200px}
+.month-nav{display:flex;align-items:center;gap:8px}
+.month-nav button{background:#f5f5f5;border:1px solid #ddd;border-radius:6px;
+  width:32px;height:32px;cursor:pointer;font-size:16px;line-height:1}
+.month-nav button:hover{background:#e8f0fe;border-color:#1a73e8}
+.month-nav button:disabled{opacity:.4;cursor:default}
+#month-label{font-weight:600;font-size:14px;min-width:120px;text-align:center}
+.btn-refresh{margin-left:auto;background:#e8f0fe;color:#1a73e8;border:1px solid #c5d8fc;
+  border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-refresh:hover{background:#d2e3fc}
+.result-count{font-size:12px;color:#888;margin-left:4px}
+
+/* ── Legend ── */
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;
+  background:#fff;border-radius:6px;padding:5px 10px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.d-hadir{background:#43a047}
+.d-absen{background:#e53935}
+.d-cuti{background:#ffa000}
+.d-sakit{background:#8e24aa}
+.d-libur{background:#90a4ae}
+.d-wknd{background:#b0bec5}
+.d-nodata{background:#eceff1}
+
+/* ── Calendar card ── */
+.card{background:#fff;border-radius:10px;padding:18px 20px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px}
+.card-hdr{display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.kary-info{}
+.kary-name{font-weight:700;font-size:15px}
+.kary-meta{font-size:11px;color:#888;margin-top:3px}
+.kary-stats{display:flex;gap:6px;flex-wrap:wrap}
+.stat{border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600}
+.st-h{background:#e8f5e9;color:#2e7d32}
+.st-a{background:#ffebee;color:#c62828}
+.st-c{background:#fff8e1;color:#e65100}
+.st-s{background:#f3e5f5;color:#6a1b9a}
+.st-l{background:#eceff1;color:#546e7a}
+
+/* ── Day grid ── */
+.day-hdr-row{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px}
+.day-hdr-row div{text-align:center;font-size:10px;font-weight:700;color:#999;padding:3px}
+.day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.day-cell{border-radius:5px;padding:5px;min-height:58px;font-size:11px;position:relative;
+  cursor:default;transition:transform .12s}
+.day-cell:hover{transform:scale(1.05);z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.day-num{font-weight:700;font-size:12px;margin-bottom:2px}
+.day-st{font-size:10px;font-weight:600;opacity:.9}
+.day-time{font-size:9px;opacity:.7;margin-top:2px;line-height:1.4}
+.day-empty{min-height:58px}
+
+/* Status colors */
+.s-hadir{background:#e8f5e9;border-left:3px solid #43a047}
+.s-absen{background:#ffebee;border-left:3px solid #e53935}
+.s-cuti {background:#fff8e1;border-left:3px solid #ffa000}
+.s-sakit{background:#f3e5f5;border-left:3px solid #8e24aa}
+.s-libur{background:#eceff1;border-left:3px solid #90a4ae;opacity:.7}
+.s-wknd {background:#f5f5f5;border-left:3px solid #bdbdbd;opacity:.6}
+.s-nodata{background:#fafafa;border-left:3px solid #e0e0e0;opacity:.5}
+.s-hadir .day-num{color:#2e7d32}
+.s-absen .day-num{color:#c62828}
+.s-cuti  .day-num{color:#e65100}
+.s-sakit .day-num{color:#6a1b9a}
+
+/* ── Tooltip ── */
+.tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:#333;color:#fff;font-size:11px;border-radius:6px;padding:7px 10px;
+  white-space:nowrap;z-index:10;pointer-events:none;opacity:0;transition:opacity .15s;
+  min-width:130px;text-align:left;line-height:1.8;box-shadow:0 3px 8px rgba(0,0,0,.3)}
+.day-cell:hover .tip{opacity:1}
+.tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:#333}
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <p id="loading-msg">Memuat data dari Google Sheets…</p>
+</div>
+
+<!-- Error -->
+<div id="error-screen" style="display:none">
+  <div id="error-box">
+    <h3>Gagal memuat data</h3>
+    <p id="error-msg">Pastikan Google Sheets sudah diset <b>"Siapa saja yang memiliki link"</b> bisa melihat, lalu coba lagi.</p>
+    <button class="btn-retry" onclick="main()">Coba lagi</button>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="hdr">
+    <div>
+      <div class="hdr-title">Report Absensi Karyawan</div>
+      <div class="hdr-sub" id="update-label">Memperbarui…</div>
+    </div>
+    <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+  </div>
+
+  <div class="controls">
+    <div class="month-nav">
+      <button id="btn-prev" onclick="changeMonth(-1)">&#8249;</button>
+      <span id="month-label">—</span>
+      <button id="btn-next" onclick="changeMonth(1)">&#8250;</button>
+    </div>
+    <div class="ctrl-group">
+      <label for="sel-dept">Departemen:</label>
+      <select id="sel-dept" onchange="onFilterChange()">
+        <option value="">Semua</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label for="sel-kary">Karyawan:</label>
+      <select id="sel-kary" onchange="renderAll()">
+        <option value="">Semua</option>
+      </select>
+    </div>
+    <span class="result-count" id="result-count"></span>
+    <button class="btn-refresh" onclick="main()">&#8635; Refresh</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="dot d-hadir"></div>Hadir</div>
+    <div class="legend-item"><div class="dot d-absen"></div>Absen</div>
+    <div class="legend-item"><div class="dot d-cuti"></div>Cuti (CT/CP/CK)</div>
+    <div class="legend-item"><div class="dot d-sakit"></div>Sakit (S)</div>
+    <div class="legend-item"><div class="dot d-libur"></div>Libur (Off)</div>
+    <div class="legend-item"><div class="dot d-wknd"></div>Sabtu/Minggu</div>
+    <div class="legend-item"><div class="dot d-nodata"></div>Tidak ada data</div>
+  </div>
+
+  <div id="cards-container"></div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────
+var SHEET_ID = '1fVhHhRFNd9XWplecq79ukGn2WrrxNnL0CEpfmJEXs1E';
+var BASE = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&sheet=';
+
+var BULAN_MAP = {
+  'Jan':1,'Feb':2,'Mar':3,'Apr':4,'Mei':5,'May':5,'Jun':6,
+  'Jul':7,'Agu':8,'Aug':8,'Sep':9,'Okt':10,'Oct':10,'Nov':11,'Des':12,'Dec':12
+};
+var BULAN_ID = ['','Januari','Februari','Maret','April','Mei','Juni',
+                'Juli','Agustus','September','Oktober','November','Desember'];
+var HARI = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+
+// Kode jadwal
+var CUTI_CODES  = {CT:1, CP:1, CK:1};
+var SAKIT_CODES = {S:1};
+
+// State
+var DATA        = null;
+var availMonths = [];
+var curMonthIdx = 0;
+
+// ── CSV Parser ────────────────────────────────────────────
+function parseCSV(text) {
+  var rows = [];
+  var i = 0, n = text.length;
+  while (i < n) {
+    var row = [];
+    // skip blank lines
+    while (i < n && (text[i] === '\n' || text[i] === '\r')) i++;
+    if (i >= n) break;
+    while (i < n && text[i] !== '\n' && text[i] !== '\r') {
+      var cell = '';
+      if (text[i] === '"') {
+        i++;
+        while (i < n) {
+          if (text[i] === '"') {
+            i++;
+            if (i < n && text[i] === '"') { cell += '"'; i++; }
+            else break;
+          } else { cell += text[i++]; }
+        }
+      } else {
+        while (i < n && text[i] !== ',' && text[i] !== '\n' && text[i] !== '\r') {
+          cell += text[i++];
+        }
+      }
+      row.push(cell.trim());
+      if (i < n && text[i] === ',') i++;
+    }
+    if (row.length > 0 && !(row.length === 1 && row[0] === '')) rows.push(row);
+  }
+  return rows;
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function parseDateStr(s) {
+  // "23-Mar-2026" or "1-Jun-2026"
+  var p = s.split('-');
+  if (p.length < 3) return null;
+  var d = parseInt(p[0]);
+  var m = BULAN_MAP[p[1]];
+  var y = parseInt(p[2]);
+  if (!m || isNaN(d) || isNaN(y)) return null;
+  return y + '-' + pad(m) + '-' + pad(d);
+}
+
+function parseJadwalHeader(s) {
+  // "1-Mei" or "31-Mei" → "2026-05-01"
+  var p = s.split('-');
+  if (p.length < 2) return null;
+  var d = parseInt(p[0]);
+  var m = BULAN_MAP[p[1]];
+  if (!m || isNaN(d)) return null;
+  return '2026-' + pad(m) + '-' + pad(d);
+}
+
+function fmtTime(s) {
+  var p = String(s).trim().split(':');
+  if (p.length < 2) return s;
+  return pad(parseInt(p[0])) + ':' + p[1];
+}
+
+function isWeekend(ymd) {
+  var w = new Date(ymd + 'T00:00:00').getDay();
+  return w === 0 || w === 6;
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Process Absen ─────────────────────────────────────────
+// cols: NIK(0), Nama(1), TglJam(2), Lokasi(3), Periode(4), Tanggal(5), Jam(6)
+function processAbsen(rowSets) {
+  var db = {};
+  rowSets.forEach(function(rows) {
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      if (row.length < 7) continue;
+      var nik  = row[0].trim();
+      var nama = row[1].trim();
+      var tgl  = row[5].trim();
+      var jam  = row[6].trim();
+      if (!nik || !tgl || !jam) continue;
+      var dk = parseDateStr(tgl);
+      if (!dk) continue;
+      var t = fmtTime(jam);
+      if (!db[nik]) db[nik] = { nama: nama, days: {} };
+      db[nik].nama = nama;
+      if (!db[nik].days[dk]) {
+        db[nik].days[dk] = { masuk: t, keluar: t, taps: 1 };
+      } else {
+        var rec = db[nik].days[dk];
+        if (t < rec.masuk) rec.masuk = t;
+        if (t > rec.keluar) rec.keluar = t;
+        rec.taps++;
+      }
+    }
+  });
+  return db;
+}
+
+// ── Process Jadwal ────────────────────────────────────────
+// cols: NIK(0), Nama(1), Departemen(2), Shift/No(3), Tampil(4), tanggal(5+)
+// Status values: ON, OFF, CT, CP, CK, S
+function processJadwal(rows) {
+  var db = {};
+  if (!rows.length) return db;
+  var headers = rows[0];
+
+  // Date columns start at index 5
+  var dateCols = [];
+  for (var c = 5; c < headers.length; c++) {
+    var dk = parseJadwalHeader(headers[c].trim());
+    if (dk) dateCols.push({ col: c, ymd: dk });
+  }
+
+  for (var i = 1; i < rows.length; i++) {
+    var row    = rows[i];
+    var nik    = (row[0] || '').trim();
+    var nama   = (row[1] || '').trim();
+    var dept   = (row[2] || '').trim();
+    var shift  = (row[3] || '').trim();
+    var tampil = (row[4] || '').trim().toUpperCase();
+
+    if (!nik) continue;
+    // Hanya tampilkan jika kolom Tampil = TRUE / ✓ / 1
+    if (tampil !== 'TRUE' && tampil !== '1' && tampil !== 'YA') continue;
+
+    var days = {};
+    dateCols.forEach(function(dc) {
+      var v = (row[dc.col] || '').trim().toUpperCase();
+      if (v) days[dc.ymd] = v;
+    });
+
+    db[nik] = { nama: nama, dept: dept, shift: shift, days: days };
+  }
+  return db;
+}
+
+// ── Build merged data ─────────────────────────────────────
+function buildData(absenRowSets, jadwalRows) {
+  var absenDb  = processAbsen(absenRowSets);
+  var jadwalDb = processJadwal(jadwalRows);
+
+  // karyList hanya dari jadwal (yang Tampil=TRUE) + absen yang ada di jadwal
+  var karyList = Object.keys(jadwalDb).map(function(nik) {
+    return {
+      nik:   nik,
+      nama:  jadwalDb[nik].nama,
+      dept:  jadwalDb[nik].dept,
+      shift: jadwalDb[nik].shift
+    };
+  }).sort(function(a,b) {
+    var dc = a.dept.localeCompare(b.dept);
+    return dc !== 0 ? dc : a.nama.localeCompare(b.nama);
+  });
+
+  var absenClean = {};
+  Object.keys(absenDb).forEach(function(nik) {
+    absenClean[nik] = absenDb[nik].days;
+  });
+
+  return { karyList: karyList, absenDb: absenClean, jadwalDb: jadwalDb };
+}
+
+// ── Available months ──────────────────────────────────────
+function computeMonths(data) {
+  var mSet = {};
+  Object.values(data.absenDb).forEach(function(days) {
+    Object.keys(days).forEach(function(d) { mSet[d.slice(0,7)] = 1; });
+  });
+  Object.values(data.jadwalDb).forEach(function(jd) {
+    Object.keys(jd.days).forEach(function(d) { mSet[d.slice(0,7)] = 1; });
+  });
+  return Object.keys(mSet).sort();
+}
+
+// ── Populate dropdowns ────────────────────────────────────
+function populateDropdowns() {
+  // Departemen
+  var depts = [];
+  DATA.karyList.forEach(function(k) {
+    if (k.dept && depts.indexOf(k.dept) === -1) depts.push(k.dept);
+  });
+  depts.sort();
+
+  var selDept = document.getElementById('sel-dept');
+  selDept.innerHTML = '<option value="">Semua Departemen</option>';
+  depts.forEach(function(d) {
+    var opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = d;
+    selDept.appendChild(opt);
+  });
+
+  repopulateKary();
+}
+
+function repopulateKary() {
+  var filterDept = document.getElementById('sel-dept').value;
+  var selKary    = document.getElementById('sel-kary');
+  var prevVal    = selKary.value;
+  selKary.innerHTML = '<option value="">Semua Karyawan</option>';
+
+  DATA.karyList.forEach(function(k) {
+    if (filterDept && k.dept !== filterDept) return;
+    var opt = document.createElement('option');
+    opt.value = k.nik;
+    opt.textContent = k.nama;
+    selKary.appendChild(opt);
+  });
+
+  // Restore selection if still valid
+  var found = false;
+  for (var i = 0; i < selKary.options.length; i++) {
+    if (selKary.options[i].value === prevVal) { selKary.value = prevVal; found = true; break; }
+  }
+  if (!found) selKary.value = '';
+}
+
+function onFilterChange() {
+  repopulateKary();
+  renderAll();
+}
+
+// ── Render all cards ──────────────────────────────────────
+function renderAll() {
+  if (!DATA || !availMonths.length) return;
+
+  var ym    = availMonths[curMonthIdx];
+  var parts = ym.split('-');
+  var yr    = parseInt(parts[0]);
+  var mo    = parseInt(parts[1]);
+
+  document.getElementById('month-label').textContent = BULAN_ID[mo] + ' ' + yr;
+  document.getElementById('btn-prev').disabled = (curMonthIdx === 0);
+  document.getElementById('btn-next').disabled = (curMonthIdx === availMonths.length - 1);
+
+  var filterDept = document.getElementById('sel-dept').value;
+  var filterNik  = document.getElementById('sel-kary').value;
+
+  var list = DATA.karyList.filter(function(k) {
+    if (filterDept && k.dept !== filterDept) return false;
+    if (filterNik  && k.nik  !== filterNik)  return false;
+    return true;
+  });
+
+  document.getElementById('result-count').textContent =
+    list.length + ' karyawan';
+
+  var container = document.getElementById('cards-container');
+  container.innerHTML = '';
+  list.forEach(function(k) {
+    container.appendChild(buildCard(k, yr, mo));
+  });
+}
+
+// ── Build single card ─────────────────────────────────────
+function buildCard(kary, yr, mo) {
+  var nik      = kary.nik;
+  var aDb      = DATA.absenDb[nik]           || {};
+  var jDays    = DATA.jadwalDb[nik] ? DATA.jadwalDb[nik].days : {};
+  var daysInM  = new Date(yr, mo, 0).getDate();
+  var firstDow = new Date(yr, mo-1, 1).getDay();
+
+  // Stats
+  var cHadir=0, cAbsen=0, cCuti=0, cSakit=0, cLibur=0;
+  for (var d=1; d<=daysInM; d++) {
+    var ymd = yr + '-' + pad(mo) + '-' + pad(d);
+    var jR  = (jDays[ymd] || '').toUpperCase();
+    var aR  = aDb[ymd] || null;
+    var wk  = isWeekend(ymd);
+
+    if (jR === 'OFF' || (wk && !jR && !aR)) { cLibur++; }
+    else if (CUTI_CODES[jR])  { cCuti++;  }
+    else if (SAKIT_CODES[jR]) { cSakit++; }
+    else if (aR)               { cHadir++; }
+    else if (jR === 'ON')      { cAbsen++; }
+  }
+
+  var card = document.createElement('div');
+  card.className = 'card';
+
+  // Card header
+  card.innerHTML =
+    '<div class="card-hdr">' +
+      '<div class="kary-info">' +
+        '<div class="kary-name">' + esc(kary.nama) + '</div>' +
+        '<div class="kary-meta">NIK: ' + esc(nik) +
+          ' &nbsp;|&nbsp; ' + esc(kary.dept) +
+          ' &nbsp;|&nbsp; ' + esc(kary.shift) + '</div>' +
+      '</div>' +
+      '<div class="kary-stats">' +
+        '<div class="stat st-h">Hadir: '  + cHadir + '</div>' +
+        '<div class="stat st-a">Absen: '  + cAbsen + '</div>' +
+        (cCuti  ? '<div class="stat st-c">Cuti: '  + cCuti  + '</div>' : '') +
+        (cSakit ? '<div class="stat st-s">Sakit: ' + cSakit + '</div>' : '') +
+        '<div class="stat st-l">Off: '    + cLibur + '</div>' +
+      '</div>' +
+    '</div>';
+
+  // Day-of-week header
+  var dowRow = document.createElement('div');
+  dowRow.className = 'day-hdr-row';
+  HARI.forEach(function(h) {
+    var el = document.createElement('div');
+    el.textContent = h;
+    dowRow.appendChild(el);
+  });
+  card.appendChild(dowRow);
+
+  // Grid
+  var grid = document.createElement('div');
+  grid.className = 'day-grid';
+
+  for (var e=0; e<firstDow; e++) {
+    var emp = document.createElement('div');
+    emp.className = 'day-empty';
+    grid.appendChild(emp);
+  }
+
+  for (var d=1; d<=daysInM; d++) {
+    var ymd  = yr + '-' + pad(mo) + '-' + pad(d);
+    var jR   = (jDays[ymd] || '').toUpperCase();
+    var aR   = aDb[ymd] || null;
+    var wk   = isWeekend(ymd);
+    var dow  = new Date(ymd + 'T00:00:00').getDay();
+
+    var cls, st, tipLines;
+
+    if (jR === 'OFF') {
+      cls = 's-libur'; st = 'Off';
+      tipLines = ['Status: Hari Libur'];
+    } else if (CUTI_CODES[jR]) {
+      cls = 's-cuti';
+      st  = jR === 'CT' ? 'Cuti' : jR === 'CP' ? 'Cuti P.' : 'Cuti K.';
+      tipLines = ['Status: ' + (jR==='CT'?'Cuti Tahunan':jR==='CP'?'Cuti Panjang':'Cuti Khusus')];
+    } else if (SAKIT_CODES[jR]) {
+      cls = 's-sakit'; st = 'Sakit';
+      tipLines = ['Status: Sakit'];
+    } else if (wk && !jR) {
+      if (aR) { cls = 's-hadir'; st = 'Hadir'; }
+      else    { cls = 's-wknd';  st = HARI[dow]; }
+      tipLines = aR
+        ? ['Masuk: '+aR.masuk, 'Keluar: '+aR.keluar, 'Tap: '+aR.taps+'x']
+        : ['Status: '+HARI[dow]];
+    } else if (jR === 'ON') {
+      if (aR) { cls = 's-hadir'; st = 'Hadir'; }
+      else    { cls = 's-absen'; st = 'Absen'; }
+      tipLines = aR
+        ? ['Masuk: '+aR.masuk, 'Keluar: '+aR.keluar, 'Tap: '+aR.taps+'x']
+        : ['Status: Absen'];
+    } else if (aR) {
+      cls = 's-hadir'; st = 'Hadir';
+      tipLines = ['Masuk: '+aR.masuk, 'Keluar: '+aR.keluar, 'Tap: '+aR.taps+'x'];
+    } else {
+      cls = 's-nodata'; st = '—';
+      tipLines = ['Tidak ada data'];
+    }
+
+    var cell = document.createElement('div');
+    cell.className = 'day-cell ' + cls;
+
+    var timeHtml = aR
+      ? '<div class="day-time">' + aR.masuk + '<br>' + aR.keluar + '</div>'
+      : '';
+
+    cell.innerHTML =
+      '<div class="day-num">' + d + '</div>' +
+      '<div class="day-st">' + st + '</div>' +
+      timeHtml +
+      '<div class="tip">' + tipLines.join('<br>') + '</div>';
+
+    grid.appendChild(cell);
+  }
+
+  card.appendChild(grid);
+  return card;
+}
+
+function changeMonth(dir) {
+  curMonthIdx = Math.max(0, Math.min(availMonths.length-1, curMonthIdx+dir));
+  renderAll();
+}
+
+// ── Fetch ─────────────────────────────────────────────────
+function fetchCSV(url) {
+  return fetch(url, {cache:'no-store'}).then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.text();
+  });
+}
+
+// ── Main ──────────────────────────────────────────────────
+function main() {
+  document.getElementById('loading-screen').style.display = 'flex';
+  document.getElementById('error-screen').style.display   = 'none';
+  document.getElementById('app').style.display            = 'none';
+  document.getElementById('loading-msg').textContent      = 'Memuat data dari Google Sheets…';
+
+  Promise.all([
+    fetchCSV(BASE + 'Absen'),
+    fetchCSV(BASE + 'Absen&tq=select%20*%20offset%20500'),
+    fetchCSV(BASE + 'jadwal')
+  ]).then(function(results) {
+    document.getElementById('loading-msg').textContent = 'Memproses data…';
+
+    DATA = buildData(
+      [parseCSV(results[0]), parseCSV(results[1])],
+      parseCSV(results[2])
+    );
+
+    availMonths = computeMonths(DATA);
+    if (!availMonths.length) throw new Error('Tidak ada data bulan ditemukan.');
+
+    // Default: bulan terakhir yang ada tap
+    var lastAbsenMonth = '';
+    Object.values(DATA.absenDb).forEach(function(days) {
+      Object.keys(days).forEach(function(d) {
+        var ym = d.slice(0,7);
+        if (ym > lastAbsenMonth) lastAbsenMonth = ym;
+      });
+    });
+    curMonthIdx = lastAbsenMonth
+      ? Math.max(0, availMonths.indexOf(lastAbsenMonth))
+      : availMonths.length - 1;
+
+    populateDropdowns();
+    renderAll();
+
+    var now  = new Date();
+    var tStr = now.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})
+             + ' ' + now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('update-label').textContent = 'Data diperbarui: ' + tStr;
+
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('app').style.display            = 'block';
+
+  }).catch(function(err) {
+    console.error(err);
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('error-screen').style.display   = 'flex';
+    document.getElementById('error-msg').textContent =
+      'Error: ' + err.message + '. Pastikan Google Sheets diset "Siapa saja yang memiliki link" dapat melihat.';
+  });
+}
+
+main();
+</script>
+</body>
+</html>
