@@ -103,7 +103,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
 .s-absen{background:#ffebee;border-left:3px solid #e53935}
 .s-cuti {background:#fff8e1;border-left:3px solid #ffa000}
 .s-sakit{background:#f3e5f5;border-left:3px solid #8e24aa}
-.s-libur{background:#eceff1;border-left:3px solid #90a4ae;opacity:.7}
+.s-libur{background:#eceff1;border-left:3px solid #90a4ae}
 .s-wknd {background:#f5f5f5;border-left:3px solid #bdbdbd;opacity:.6}
 .s-nodata{background:#fafafa;border-left:3px solid #e0e0e0;opacity:.5}
 .s-hadir .day-num{color:#2e7d32}
@@ -548,7 +548,9 @@ function buildCard(kary, yr, mo) {
 
     if (jR === 'OFF') {
       cls = 's-libur'; st = 'Off';
-      tipLines = ['Status: Hari Libur'];
+      tipLines = aR
+        ? ['Status: Hari Libur (ada tap)', 'Masuk: '+aR.masuk, 'Keluar: '+aR.keluar, 'Tap: '+aR.taps+'x']
+        : ['Status: Hari Libur'];
     } else if (CUTI_CODES[jR]) {
       cls = 's-cuti';
       st  = jR === 'CT' ? 'Cuti' : jR === 'CP' ? 'Cuti P.' : 'Cuti K.';
