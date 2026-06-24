@@ -94,7 +94,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
   cursor:default;transition:transform .12s}
 .day-cell:hover{transform:scale(1.05);z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .day-num{font-weight:700;font-size:20px;margin-bottom:2px}
-.day-st{font-size:10px;font-weight:600;opacity:.9}
+.day-st{font-size:15px;font-weight:600;opacity:.9}
 .day-time{font-size:9px;opacity:.7;margin-top:2px;line-height:1.4}
 .day-empty{min-height:58px}
 
@@ -199,6 +199,13 @@ var HARI = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
 // Kode jadwal
 var CUTI_CODES  = {CT:1, CP:1, CK:1};
 var SAKIT_CODES = {S:1};
+var DINAS_CODES = {OD:1};
+
+var CUTI_LABEL = {
+  CT: 'Cuti Tahunan',
+  CP: 'Cuti Perjalanan',
+  CK: 'Cuti Kompensasi'
+};
 
 // State
 var DATA        = null;
@@ -484,6 +491,7 @@ function buildCard(kary, yr, mo) {
     if (jR === 'OFF' || (wk && !jR && !aR)) { cLibur++; }
     else if (CUTI_CODES[jR])  { cCuti++;  }
     else if (SAKIT_CODES[jR]) { cSakit++; }
+    else if (DINAS_CODES[jR]) { cHadir++; }
     else if (aR)               { cHadir++; }
     else if (jR === 'ON')      { cAbsen++; }
   }
@@ -544,10 +552,15 @@ function buildCard(kary, yr, mo) {
     } else if (CUTI_CODES[jR]) {
       cls = 's-cuti';
       st  = jR === 'CT' ? 'Cuti' : jR === 'CP' ? 'Cuti P.' : 'Cuti K.';
-      tipLines = ['Status: ' + (jR==='CT'?'Cuti Tahunan':jR==='CP'?'Cuti Panjang':'Cuti Khusus')];
+      tipLines = ['Status: ' + (CUTI_LABEL[jR] || jR)];
     } else if (SAKIT_CODES[jR]) {
       cls = 's-sakit'; st = 'Sakit';
       tipLines = ['Status: Sakit'];
+    } else if (DINAS_CODES[jR]) {
+      cls = 's-hadir'; st = 'Dinas';
+      tipLines = aR
+        ? ['Status: On Duty / Dinas', 'Masuk: '+aR.masuk, 'Keluar: '+aR.keluar]
+        : ['Status: On Duty / Dinas'];
     } else if (wk && !jR) {
       if (aR) { cls = 's-hadir'; st = 'Hadir'; }
       else    { cls = 's-wknd';  st = HARI[dow]; }
