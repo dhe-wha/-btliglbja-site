@@ -88,7 +88,8 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
 
 /* ── Day grid ── */
 .day-hdr-row{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px}
-.day-hdr-row div{text-align:center;font-size:10px;font-weight:700;color:#999;padding:3px}
+.day-hdr-row div{text-align:center;font-size:15px;font-weight:700;color:#1a237e;padding:3px}
+.day-hdr-row div:first-child{color:#c62828}
 .day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
 .day-cell{border-radius:5px;padding:5px;min-height:58px;font-size:11px;position:relative;
   cursor:default;transition:transform .12s}
@@ -194,7 +195,7 @@ var BULAN_MAP = {
 };
 var BULAN_ID = ['','Januari','Februari','Maret','April','Mei','Juni',
                 'Juli','Agustus','September','Oktober','November','Desember'];
-var HARI = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+var HARI = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 
 // Kode jadwal
 var CUTI_CODES  = {CT:1, CP:1, CK:1};
