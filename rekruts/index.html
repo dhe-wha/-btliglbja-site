@@ -1502,7 +1502,7 @@
   async function loadRecapJobs() {
     try {
       const res = await fetch(GVIZ("recap_jobs"));
-      recapJobs = parseCSV(await res.text()).filter(r => r.jabatan);
+      recapJobs = parseCSV(await res.text()).filter(r => r.jabatan && String(r.posting).toUpperCase() === 'TRUE');
     } catch(e) { recapJobs = []; }
     renderProgressDashboard();
   }
