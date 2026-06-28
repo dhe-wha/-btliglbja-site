@@ -120,6 +120,14 @@
     .btn-submit:hover { background: var(--primary-dark); }
     .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
+    /* TOAST */
+    .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px); background: #fff; border: 1px solid #A5D6A7; border-radius: 12px; padding: 16px 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); display: flex; align-items: flex-start; gap: 12px; z-index: 9999; min-width: 300px; max-width: 460px; opacity: 0; transition: all .35s cubic-bezier(.22,1,.36,1); pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+    .toast-icon { font-size: 22px; flex-shrink: 0; line-height: 1.3; }
+    .toast-body { flex: 1; }
+    .toast-title { font-size: 14px; font-weight: 700; color: var(--primary-dark); margin-bottom: 3px; }
+    .toast-msg { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
     @media (max-width: 640px) {
       .topbar { padding: 12px 20px; }
       .topbar-links { display: none; }
@@ -205,6 +213,15 @@
     </a>
   </div>
 </footer>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <div class="toast-icon">✅</div>
+  <div class="toast-body">
+    <div class="toast-title">PT Biomasa Jaya Abadi</div>
+    <div class="toast-msg" id="toast-msg">Lamaran Anda telah diterima. Tim HRD kami akan menghubungi Anda secepatnya.</div>
+  </div>
+</div>
 
 <!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
@@ -502,14 +519,26 @@
 
       await fetch(APPS_SCRIPT_URL, { method: 'POST', body: params, mode: 'no-cors' });
 
-      alert('✅ Terima kasih! Lamaran Anda telah diterima. Tim HRD PT Biomasa Jaya Abadi akan menghubungi Anda secepatnya.');
       closeModal();
+      showToast('Lamaran Anda telah diterima. Tim HRD kami akan menghubungi Anda secepatnya.');
     } catch(err) {
-      alert('⚠️ Gagal mengirim lamaran. Coba lagi atau hubungi HRD langsung.');
+      showToast('Gagal mengirim lamaran. Coba lagi atau hubungi HRD langsung.', true);
     } finally {
       btn.textContent = 'Kirim Lamaran →';
       btn.disabled    = false;
     }
+  }
+
+  function showToast(msg, isError) {
+    var toast = document.getElementById('toast');
+    var icon  = toast.querySelector('.toast-icon');
+    var title = toast.querySelector('.toast-title');
+    document.getElementById('toast-msg').textContent = msg;
+    icon.textContent  = isError ? '⚠️' : '✅';
+    toast.style.borderColor = isError ? '#FCA5A5' : '#A5D6A7';
+    title.style.color = isError ? '#b91c1c' : 'var(--primary-dark)';
+    toast.classList.add('show');
+    setTimeout(function(){ toast.classList.remove('show'); }, 5000);
   }
 
   loadJobs();
