@@ -120,6 +120,12 @@
     .btn-submit:hover { background: var(--primary-dark); }
     .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
+    /* PAGINATION */
+    .pg-btn { min-width: 36px; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--white); font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all .15s; }
+    .pg-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--primary); }
+    .pg-btn.pg-active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .pg-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
     /* TOAST */
     .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px); background: #fff; border: 1px solid #A5D6A7; border-radius: 12px; padding: 16px 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); display: flex; align-items: flex-start; gap: 12px; z-index: 9999; min-width: 300px; max-width: 460px; opacity: 0; transition: all .35s cubic-bezier(.22,1,.36,1); pointer-events: none; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
@@ -192,6 +198,8 @@
     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <p>Tidak ada posisi yang cocok dengan pencarianmu.</p>
   </div>
+
+  <div id="pagination" style="display:flex;justify-content:center;gap:6px;margin-top:20px;flex-wrap:wrap;"></div>
 
   <div class="spontan-banner">
     <div class="spontan-text">
@@ -290,7 +298,7 @@
 </div>
 
 <script>
-  const CSV_URL         = 'https://docs.google.com/spreadsheets/d/1Tj2ZNCW04lOGoB5hcCxT_d3GvqdAj854daY4dVDN3sU/gviz/tq?tqx=out:csv&sheet=recap_jobs&range=A:J';
+  const CSV_URL         = 'https://docs.google.com/spreadsheets/d/1Tj2ZNCW04lOGoB5hcCxT_d3GvqdAj854daY4dVDN3sU/gviz/tq?tqx=out:csv&sheet=recap_jobs&range=A:K';
   const JABATAN_URL     = 'https://docs.google.com/spreadsheets/d/1Tj2ZNCW04lOGoB5hcCxT_d3GvqdAj854daY4dVDN3sU/gviz/tq?tqx=out:csv&sheet=jabatan';
   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwG_MZbAUwIoW_yoWMeCWxmk6mgCF5FHWybt3298suN7cYrWXHFrfsl7l4BfG70zdjszg/exec';
 
@@ -330,7 +338,10 @@
     });
   }
 
-  var ALL_JOBS = [];
+  var ALL_JOBS      = [];
+  var FILTERED_JOBS = [];
+  var CURRENT_PAGE  = 1;
+  var PAGE_SIZE     = 10;
 
   async function loadJobs() {
     try {
@@ -347,7 +358,7 @@
       var res  = await fetch(CSV_URL);
       var text = await res.text();
       ALL_JOBS = parseCSV(text)
-        .filter(function(r){ return r.posting === 'TRUE'; })
+        .filter(function(r){ return r.Web === 'TRUE'; })
         .map(function(r){
           return {
             jabatan:    r.jabatan,
@@ -372,25 +383,36 @@
           return '<button class="chip" data-dept="' + d.replace(/"/g,'&quot;') + '" onclick="setChip(this,\'' + d.replace(/'/g,"\\'") + '\')">' + d + '</button>';
         }).join('');
 
-      renderJobs(ALL_JOBS);
+      FILTERED_JOBS = ALL_JOBS;
+      CURRENT_PAGE  = 1;
+      renderJobs();
     } catch(e) {
       document.getElementById('jobs-list').innerHTML =
         '<div style="text-align:center;padding:48px;color:var(--muted);"><div style="font-size:28px;margin-bottom:8px;">⚠️</div><p style="font-size:14px;">Gagal memuat data. Coba refresh halaman.</p></div>';
     }
   }
 
-  function renderJobs(list) {
+  function renderJobs() {
+    var list      = FILTERED_JOBS;
     var container = document.getElementById('jobs-list');
     var noResult  = document.getElementById('no-result');
     document.getElementById('count-shown').textContent = list.length;
+
     if (!list.length) {
       container.innerHTML = '';
       noResult.style.display = 'block';
+      document.getElementById('pagination').innerHTML = '';
       return;
     }
     noResult.style.display = 'none';
-    container.innerHTML = list.map(function(j){
-      var posisiStr = (j.jabatan + ' – ' + j.departemen).replace(/'/g, "\\'");
+
+    var totalPages = Math.ceil(list.length / PAGE_SIZE);
+    if (CURRENT_PAGE > totalPages) CURRENT_PAGE = 1;
+    var start  = (CURRENT_PAGE - 1) * PAGE_SIZE;
+    var paged  = list.slice(start, start + PAGE_SIZE);
+
+    container.innerHTML = paged.map(function(j){
+      var posisiStr  = (j.jabatan + ' – ' + j.departemen).replace(/'/g, "\\'");
       var jabatanStr = j.jabatan.replace(/'/g, "\\'");
       return '<div class="job-card" data-dept="' + j.dept_key + '">' +
         '<div class="job-dept-icon" style="background:' + getColor(j.departemen) + '">' + getIcon(j.jabatan, j.departemen) + '</div>' +
@@ -407,17 +429,38 @@
         '</div>' +
       '</div>';
     }).join('');
+
+    // Pagination
+    var pag = document.getElementById('pagination');
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+    var pages = '';
+    for (var i = 1; i <= totalPages; i++) {
+      pages += '<button class="pg-btn' + (i === CURRENT_PAGE ? ' pg-active' : '') + '" onclick="goPage(' + i + ')">' + i + '</button>';
+    }
+    pag.innerHTML =
+      '<button class="pg-btn" onclick="goPage(' + (CURRENT_PAGE - 1) + ')" ' + (CURRENT_PAGE === 1 ? 'disabled' : '') + '>&#8592;</button>' +
+      pages +
+      '<button class="pg-btn" onclick="goPage(' + (CURRENT_PAGE + 1) + ')" ' + (CURRENT_PAGE === totalPages ? 'disabled' : '') + '>&#8594;</button>';
+  }
+
+  function goPage(n) {
+    var totalPages = Math.ceil(FILTERED_JOBS.length / PAGE_SIZE);
+    if (n < 1 || n > totalPages) return;
+    CURRENT_PAGE = n;
+    renderJobs();
+    document.getElementById('openings').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function filterJobs() {
     var q    = document.getElementById('search-input').value.toLowerCase();
     var dept = document.getElementById('dept-filter').value;
-    var list = ALL_JOBS.filter(function(j){
+    FILTERED_JOBS = ALL_JOBS.filter(function(j){
       var matchQ = !q || j.jabatan.toLowerCase().indexOf(q) >= 0 || j.departemen.toLowerCase().indexOf(q) >= 0 || j.bagian.toLowerCase().indexOf(q) >= 0;
       var matchD = !dept || j.departemen === dept;
       return matchQ && matchD;
     });
-    renderJobs(list);
+    CURRENT_PAGE = 1;
+    renderJobs();
     document.querySelectorAll('.chip').forEach(function(c){
       c.classList.toggle('active', c.dataset.dept === dept);
     });
