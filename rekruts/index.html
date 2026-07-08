@@ -599,6 +599,20 @@
       </div>
     </div>
 
+    <!-- KANDIDAT PER POSISI TERBUKA -->
+    <div class="table-card" style="margin-bottom:24px">
+      <div class="table-header">
+        <div>
+          <div class="card-title">🎯 Kandidat Lamaran per Posisi Terbuka</div>
+          <div class="card-subtitle" id="lamaran-subtitle">Pelamar dari form lamaran yang cocok dengan posisi open</div>
+        </div>
+        <button onclick="loadLamaran()" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--dark);cursor:pointer;font-size:12px">🔄 Refresh</button>
+      </div>
+      <div style="padding:16px" id="kandidat-per-posisi">
+        <div style="color:var(--muted);font-size:13px">⏳ Memuat data lamaran...</div>
+      </div>
+    </div>
+
     <!-- TABLE -->
     <div class="table-card">
       <div class="table-header">
@@ -1301,10 +1315,150 @@
     document.getElementById("topbar-title").textContent = titles[page] || page;
 
     if (page === "dashboard") { if (!recapJobs.length) loadRecapJobs(); else renderProgressDashboard(); }
+    if (page === "kandidat")  { if (!lamaranData.length) loadLamaran(); else renderKandidatPerPosisi(); }
     if (page === "lowongan")  { if (!jobs.length) loadJobs(); else renderJobsPage(); }
     if (page === "interview") { if (!phases.length) loadPhases(); else renderInterviewPage(); }
     if (page === "penempatan") { if (!window._fulfillments) loadPenempatan(); else renderPenempatanPage(); }
     if (page === "analitik")  { loadAnalitik(); }
+  }
+
+  // ── LAMARAN DATA ───────────────────────────────────────────
+  let lamaranData = [];
+
+  async function loadLamaran() {
+    const container = document.getElementById("kandidat-per-posisi");
+    const subtitle  = document.getElementById("lamaran-subtitle");
+    if (container) container.innerHTML = '<div style="color:var(--muted);font-size:13px">⏳ Memuat data lamaran...</div>';
+    try {
+      // Load lamaran & recap_jobs in parallel
+      const [resLam, resRecap] = await Promise.all([
+        fetch(GVIZ("lamaran")),
+        recapJobs.length ? Promise.resolve(null) : fetch(GVIZ("recap_jobs"))
+      ]);
+      lamaranData = parseCSV(await resLam.text()).filter(r => r.nama && r.posisi_dilamar);
+      if (resRecap) {
+        recapJobs = parseCSV(await resRecap.text()).filter(r => r.jabatan && String(r.posting).toUpperCase() === 'TRUE');
+      }
+    } catch(e) { lamaranData = []; }
+    renderKandidatPerPosisi();
+  }
+
+  function renderKandidatPerPosisi() {
+    const container = document.getElementById("kandidat-per-posisi");
+    const subtitle  = document.getElementById("lamaran-subtitle");
+    if (!container) return;
+
+    if (!lamaranData.length) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">Belum ada data lamaran.</div>';
+      return;
+    }
+
+    // Group lamaran by jabatan matching recap_jobs open positions
+    const expRank = { '>5 tahun':4, '3-5 tahun':3, '1-2 tahun':2, 'fresh graduate':1 };
+    const eduRank = { 's2':4, 's1':3, 'd3':2, 'sma/smk':1 };
+
+    // Build posisi list from recapJobs (already filtered posting=TRUE)
+    // For each recapJob, find matching lamaran
+    const posisiData = recapJobs.map(job => {
+      const jabLower = (job.jabatan || "").toLowerCase().trim();
+      const deptLower = (job.departemen || "").toLowerCase().trim();
+      const matched = lamaranData.filter(lam => {
+        const pos = (lam.posisi_dilamar || "").toLowerCase();
+        // posisi_dilamar format: "Jabatan – Departemen" or "Jabatan - Departemen"
+        return pos.includes(jabLower);
+      }).map(lam => {
+        const expKey = Object.keys(expRank).find(k => (lam.pengalaman||"").toLowerCase().includes(k)) || "";
+        const eduKey = Object.keys(eduRank).find(k => (lam.pendidikan||"").toLowerCase().includes(k)) || "";
+        const score  = (expRank[expKey] || 0) + (eduRank[eduKey] || 0);
+        return { ...lam, _score: score };
+      }).sort((a,b) => b._score - a._score); // sort by score desc
+      return { job, candidates: matched };
+    }).filter(p => p.candidates.length > 0);
+
+    // Also show lamaran that don't match any open position
+    const matchedNames = new Set(posisiData.flatMap(p => p.candidates.map(c => c.nama + c.posisi_dilamar)));
+    const unmatched = lamaranData.filter(lam => !matchedNames.has(lam.nama + lam.posisi_dilamar));
+
+    const totalLamaran = lamaranData.length;
+    const totalMatched = posisiData.reduce((s,p) => s + p.candidates.length, 0);
+    if (subtitle) subtitle.textContent = `${totalLamaran} pelamar · ${totalMatched} cocok dengan ${posisiData.length} posisi terbuka`;
+
+    if (!posisiData.length) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">Belum ada pelamar yang cocok dengan posisi terbuka saat ini.</div>';
+      return;
+    }
+
+    const eduLabel = { 's2':'S2','s1':'S1','d3':'D3','sma/smk':'SMA/SMK' };
+
+    container.innerHTML = posisiData.map((p, idx) => {
+      const { job, candidates } = p;
+      const kurang = parseInt(job.kekurangan) || 0;
+      const urgentBadge = kurang >= 3
+        ? `<span style="background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;margin-left:6px">🔴 Kurang ${kurang}</span>`
+        : kurang > 0
+          ? `<span style="background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;margin-left:6px">🟡 Kurang ${kurang}</span>`
+          : '';
+
+      return `
+        <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden">
+          <div onclick="toggleLamaranCard(${idx})" style="padding:12px 16px;cursor:pointer;background:var(--bg);display:flex;justify-content:space-between;align-items:center;user-select:none">
+            <div>
+              <span style="font-weight:600;font-size:14px;color:var(--dark)">${job.jabatan}</span>
+              ${urgentBadge}
+              <div style="color:var(--muted);font-size:12px;margin-top:2px">${job.departemen}${job.bagian && job.bagian !== job.departemen ? ' · '+job.bagian : ''}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="background:#EEF2FF;color:#4F46E5;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">${candidates.length} Pelamar</span>
+              <span id="lam-arrow-${idx}" style="color:var(--muted);font-size:12px">▼</span>
+            </div>
+          </div>
+          <div id="lam-card-${idx}" style="display:none;border-top:1px solid var(--border)">
+            ${candidates.map((c, ci) => {
+              const motivasi = (c.motivasi_catatan || "").trim();
+              const motivasiShort = motivasi.length > 120 ? motivasi.substring(0,120)+"…" : motivasi;
+              const expKey  = Object.keys(expRank).find(k => (c.pengalaman||"").toLowerCase().includes(k)) || "";
+              const expDisplay = c.pengalaman || "-";
+              const eduDisplay = c.pendidikan || "-";
+              const tgl = (c.timestamp || "").split(" ")[0] || "";
+              const jurusan = c['jurusan/study'] || c.jurusan || "";
+              const phone = c.no_handphone || "";
+
+              // Match quality indicators
+              const expScore = expRank[expKey] || 0;
+              const dots = ['','🟡','🟡','🟢','🟢'][expScore] || '';
+
+              return `
+                <div style="padding:12px 16px;border-bottom:1px solid #F1F5F9;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                  <div style="flex:1;min-width:0">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-weight:600;font-size:13px;color:var(--dark)">${c.nama}</span>
+                      ${dots}
+                    </div>
+                    <div style="color:var(--muted);font-size:12px;margin-top:3px">
+                      📚 ${eduDisplay}${jurusan ? ' · '+jurusan : ''} &nbsp;·&nbsp; ⏱ ${expDisplay}
+                    </div>
+                    <div style="color:#6366F1;font-size:11px;margin-top:2px">📋 ${c.posisi_dilamar || "-"}</div>
+                    ${motivasiShort ? `<div style="color:#475569;font-size:12px;margin-top:5px;padding:6px 10px;background:#F8FAFC;border-left:3px solid #CBD5E1;border-radius:0 4px 4px 0;font-style:italic">"${motivasiShort}"</div>` : ''}
+                  </div>
+                  <div style="text-align:right;min-width:90px;flex-shrink:0">
+                    <div style="font-size:11px;color:var(--muted)">${tgl}</div>
+                    ${phone ? `<div style="font-size:12px;color:#4F46E5;margin-top:4px;font-weight:500">${phone}</div>` : ''}
+                    ${c.email ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;word-break:break-all">${c.email}</div>` : ''}
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function toggleLamaranCard(idx) {
+    const card  = document.getElementById(`lam-card-${idx}`);
+    const arrow = document.getElementById(`lam-arrow-${idx}`);
+    if (!card) return;
+    const open = card.style.display === 'none';
+    card.style.display = open ? 'block' : 'none';
+    if (arrow) arrow.textContent = open ? '▲' : '▼';
   }
 
   // ── JOBS DATA ──────────────────────────────────────────────
