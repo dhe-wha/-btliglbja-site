@@ -1420,7 +1420,8 @@
               const expDisplay = c.pengalaman || "-";
               const eduDisplay = c.pendidikan || "-";
               const tgl = (c.timestamp || "").split(" ")[0] || "";
-              const jurusan = c['jurusan/study'] || c.jurusan || "";
+              const jurusan    = c['jurusan/study'] || c.jurusan || "";
+              const perusahaan = c.perusahaan || "";
               const phone = c.no_handphone || "";
 
               // Match quality indicators
@@ -1435,8 +1436,9 @@
                       ${dots}
                     </div>
                     <div style="color:var(--muted);font-size:12px;margin-top:3px">
-                      📚 ${eduDisplay}${jurusan ? ' · '+jurusan : ''} &nbsp;·&nbsp; ⏱ ${expDisplay}
+                      📚 ${eduDisplay}${jurusan ? ' · <span style="color:#0EA5E9">' + jurusan + '</span>' : ''} &nbsp;·&nbsp; ⏱ <span style="color:#10B981;font-weight:500">${expDisplay}</span>
                     </div>
+                    ${perusahaan ? `<div style="color:#92400E;font-size:12px;margin-top:2px">🏢 ${perusahaan}</div>` : ''}
                     <div style="color:#6366F1;font-size:11px;margin-top:2px">📋 ${c.posisi_dilamar || "-"}</div>
                     ${motivasiShort ? `<div style="color:#475569;font-size:12px;margin-top:5px;padding:6px 10px;background:#F8FAFC;border-left:3px solid #CBD5E1;border-radius:0 4px 4px 0;font-style:italic">"${motivasiShort}"</div>` : ''}
                   </div>
