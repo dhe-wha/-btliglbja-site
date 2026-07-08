@@ -272,9 +272,17 @@
             <option>&gt; 5 Tahun</option>
           </select>
         </div>
+        <div class="form-group">
+          <label>Nama Perusahaan *</label>
+          <input type="text" name="perusahaan" placeholder="Perusahaan terakhir / saat ini">
+        </div>
         <div class="form-group full">
-          <label>Posisi yang Dilamar</label>
-          <input type="text" id="modal-posisi" name="posisi_dilamar" readonly style="background:#f1f5f9;color:#64748B;">
+          <label>Jurusan / Bidang Studi *</label>
+          <input type="text" name="jurusan" placeholder="Contoh: Teknik Mesin, Manajemen, dll">
+        </div>
+        <div class="form-group full">
+          <label>Posisi yang Dilamar *</label>
+          <input type="text" id="modal-posisi" name="posisi_dilamar" placeholder="Posisi yang dilamar">
         </div>
         <div class="form-group full">
           <label>Upload CV / Lamaran *</label>
@@ -474,16 +482,23 @@
   function openModal(title, posisi) {
     document.getElementById('modal-title').textContent = title;
     document.getElementById('modal-sub').textContent   = posisi ? 'Posisi: ' + posisi : 'Isi data diri Anda dan lampirkan CV.';
-    document.getElementById('modal-posisi').value      = posisi || '';
     document.getElementById('modal-overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
     document.getElementById('lamar-form').reset();
-    document.getElementById('modal-posisi').value = posisi || '';
+    // Jika dari job card: isi & kunci field posisi; jika Lamaran Spontan: kosong & bisa diisi
+    var posisiEl = document.getElementById('modal-posisi');
+    posisiEl.value    = posisi || '';
+    posisiEl.readOnly = !!posisi;
+    posisiEl.style.background = posisi ? '#f1f5f9' : '';
+    posisiEl.style.color      = posisi ? '#64748B' : '';
     document.getElementById('file-label').textContent = 'Pilih file PDF/DOC (maks. 5 MB)';
     document.getElementById('form-error-msg').style.display = 'none';
     document.querySelectorAll('#lamar-form input, #lamar-form select').forEach(function(el){
       el.style.borderColor = ''; el.style.background = '';
     });
+    // Re-apply posisi style setelah reset loop
+    posisiEl.style.background = posisi ? '#f1f5f9' : '';
+    posisiEl.style.color      = posisi ? '#64748B' : '';
     var fl = document.getElementById('file-upload-label');
     fl.style.borderColor = ''; fl.style.background = '';
   }
@@ -522,7 +537,7 @@
     var fileInput = document.getElementById('cv-file');
 
     // Validasi mandatory fields
-    var fields = ['nama','no_handphone','email','pendidikan','pengalaman'];
+    var fields = ['nama','no_handphone','email','pendidikan','pengalaman','perusahaan','jurusan','posisi_dilamar'];
     var valid = true;
     fields.forEach(function(n){
       var el  = form.elements[n];
@@ -549,7 +564,7 @@
 
     try {
       var params = new URLSearchParams();
-      ['nama','no_handphone','email','pendidikan','pengalaman','posisi_dilamar','motivasi_catatan'].forEach(function(n){
+      ['nama','no_handphone','email','pendidikan','pengalaman','perusahaan','jurusan','posisi_dilamar','motivasi_catatan'].forEach(function(n){
         params.set(n, (form.elements[n] && form.elements[n].value) || '');
       });
 
