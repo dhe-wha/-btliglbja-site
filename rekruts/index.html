@@ -1335,7 +1335,7 @@
         fetch(GVIZ("lamaran")),
         recapJobs.length ? Promise.resolve(null) : fetch(GVIZ("recap_jobs"))
       ]);
-      lamaranData = parseCSV(await resLam.text()).filter(r => r.nama && r.posisi_dilamar && String(r.check).toUpperCase() === 'TRUE');
+      lamaranData = parseCSV(await resLam.text()).filter(r => r.nama && r.posisi_dilamar && String(r['Check'] || r.check || '').toUpperCase() === 'TRUE');
       if (resRecap) {
         recapJobs = parseCSV(await resRecap.text()).filter(r => r.jabatan && String(r.posting).toUpperCase() === 'TRUE');
       }
