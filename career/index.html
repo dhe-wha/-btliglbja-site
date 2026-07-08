@@ -273,8 +273,8 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Nama Perusahaan *</label>
-          <input type="text" name="perusahaan" placeholder="Perusahaan terakhir / saat ini">
+          <label>Nama Perusahaan</label>
+          <input type="text" name="perusahaan" placeholder="Perusahaan terakhir / saat ini (opsional)">
         </div>
         <div class="form-group full">
           <label>Jurusan / Bidang Studi *</label>
@@ -537,7 +537,7 @@
     var fileInput = document.getElementById('cv-file');
 
     // Validasi mandatory fields
-    var fields = ['nama','no_handphone','email','pendidikan','pengalaman','perusahaan','jurusan','posisi_dilamar'];
+    var fields = ['nama','no_handphone','email','pendidikan','pengalaman','jurusan','posisi_dilamar'];
     var valid = true;
     fields.forEach(function(n){
       var el  = form.elements[n];
