@@ -318,6 +318,23 @@ function processAbsen(rowSets) {
   return taps;
 }
 
+// ── Process Jadwal (hanya ambil NIK yang kolom Tampil = TRUE) ──
+// cols: NIK(0), Nama(1), Departemen(2), Shift/No(3), Tampil(4), tanggal(5+)
+function processJadwalTampil(rows) {
+  var allowed = {};
+  if (!rows || !rows.length) return allowed;
+  for (var i = 1; i < rows.length; i++) {
+    var row    = rows[i];
+    var nik    = (row[0] || '').trim();
+    var tampil = (row[4] || '').trim().toUpperCase();
+    if (!nik) continue;
+    if (tampil === 'TRUE' || tampil === '1' || tampil === 'YA') {
+      allowed[nik] = true;
+    }
+  }
+  return allowed;
+}
+
 // ── Populate filters ──────────────────────────────────────
 function populateFilters() {
   // Months
@@ -493,11 +510,15 @@ function main() {
 
   Promise.all([
     fetchCSV(BASE+'Absen'),
-    fetchCSV(BASE+'Absen&tq=select%20*%20offset%20500')
+    fetchCSV(BASE+'Absen&tq=select%20*%20offset%20500'),
+    fetchCSV(BASE+'jadwal')
   ]).then(function(results){
     document.getElementById('loading-msg').textContent='Memproses koordinat…';
 
-    ALL_TAPS = processAbsen([parseCSV(results[0]), parseCSV(results[1])]);
+    var rawTaps    = processAbsen([parseCSV(results[0]), parseCSV(results[1])]);
+    var allowedNik = processJadwalTampil(parseCSV(results[2]));
+
+    ALL_TAPS = rawTaps.filter(function(t){ return allowedNik[t.nik]; });
 
     if (!ALL_TAPS.length) throw new Error('Tidak ada data tap ditemukan.');
 
