@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Report Lokasi Tap – Absensi</title>
 <link rel="icon" href="../favicon.png">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-height:100vh}
@@ -67,12 +65,6 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
   border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;
   text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .btn-back:hover{background:#d3ecda}
-
-/* Map */
-.map-wrap{background:#fff;border-radius:10px;padding:16px;margin-bottom:16px;
-  box-shadow:0 1px 4px rgba(0,0,0,.08)}
-.map-wrap h3{font-size:14px;font-weight:700;margin-bottom:12px;color:#333}
-#map{height:400px;border-radius:8px}
 
 /* Table */
 .tbl-wrap{background:#fff;border-radius:10px;padding:16px;margin-bottom:16px;
@@ -168,12 +160,6 @@ tbody td{padding:9px 12px;vertical-align:middle}
     <button class="btn-refresh" onclick="main()">&#8635; Refresh</button>
   </div>
 
-  <!-- Map -->
-  <div class="map-wrap">
-    <h3>🗺️ Peta Lokasi Tap</h3>
-    <div id="map"></div>
-  </div>
-
   <!-- Compliance Table -->
   <div class="tbl-wrap">
     <h3>📊 Compliance per Karyawan <span id="tbl-period" style="font-weight:400;color:#888;font-size:12px"></span></h3>
@@ -234,8 +220,6 @@ var BULAN_ID = ['','Januari','Februari','Maret','April','Mei','Juni',
 // State
 var ALL_TAPS     = [];
 var FILTERED     = [];
-var mapObj       = null;
-var markerGroup  = null;
 
 // ── Math ──────────────────────────────────────────────────
 function haversine(lat1, lon1, lat2, lon2) {
@@ -388,7 +372,6 @@ function applyFilter() {
 
   updateSummary();
   updateTable();
-  updateMap();
   document.getElementById('detail-panel').style.display='none';
 }
 
@@ -491,48 +474,6 @@ function showDetail(k) {
   panel.scrollIntoView({behavior:'smooth'});
 }
 
-// ── Map ───────────────────────────────────────────────────
-function initMap() {
-  mapObj = L.map('map').setView([LOKASI_REF.mess.lat, LOKASI_REF.mess.lon], 15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution:'© OpenStreetMap'
-  }).addTo(mapObj);
-
-  // Reference circles
-  Object.values(LOKASI_REF).forEach(function(ref){
-    L.circle([ref.lat, ref.lon], {radius:RADIUS, color:'#1a73e8', fillColor:'#1a73e8', fillOpacity:.08, weight:2})
-      .addTo(mapObj);
-    L.marker([ref.lat, ref.lon], {
-      icon: L.divIcon({className:'', html:
-        '<div style="background:#1a73e8;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap">'+ref.label+'</div>',
-        iconAnchor:[20,-4]})
-    }).addTo(mapObj);
-  });
-
-  markerGroup = L.layerGroup().addTo(mapObj);
-}
-
-function updateMap() {
-  if (!markerGroup) return;
-  markerGroup.clearLayers();
-
-  FILTERED.forEach(function(t){
-    if (t.lat===null) return;
-    var color = t.inRadius ? '#43a047' : '#e53935';
-    var marker = L.circleMarker([t.lat, t.lon], {
-      radius:5, color:color, fillColor:color, fillOpacity:.7, weight:1.5
-    });
-    marker.bindPopup(
-      '<b>'+esc(t.nama)+'</b><br>'+
-      t.tgl+' '+esc(t.jam)+'<br>'+
-      'Mess: '+distLabel(t.dMess)+'<br>'+
-      'Kantor: '+distLabel(t.dKantor)+'<br>'+
-      '<b style="color:'+(t.inRadius?'#2e7d32':'#c62828')+'">'+(t.inRadius?'✓ Normal':'✗ Di luar radius')+'</b>'
-    );
-    markerGroup.addLayer(marker);
-  });
-}
-
 // ── Helpers ───────────────────────────────────────────────
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -562,9 +503,6 @@ function main() {
 
     populateFilters();
     applyFilter();
-
-    if (!mapObj) initMap();
-    updateMap();
 
     var now  = new Date();
     var tStr = now.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})
