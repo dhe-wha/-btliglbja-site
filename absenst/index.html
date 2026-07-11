@@ -439,6 +439,23 @@ function processCutiRows(rows) {
     if (!mulai || !selesai) continue;
     if (selesai < mulai) { var t = mulai; mulai = selesai; selesai = t; }
 
+    // Sanity check: tolak tanggal di luar rentang tahun wajar (mis. sel kosong/error
+    // yang oleh Google Sheets terbaca sebagai tanggal epoch 1899/1900, dll)
+    var mulaiY   = parseInt(mulai.slice(0,4), 10);
+    var selesaiY = parseInt(selesai.slice(0,4), 10);
+    if (mulaiY < 2023 || mulaiY > 2028 || selesaiY < 2023 || selesaiY > 2028) {
+      console.warn('Cuti diabaikan (tahun tidak wajar):', nik, nama, mulaiStr, '→', selesaiStr);
+      continue;
+    }
+
+    // Sanity check: satu periode cuti yang wajar tidak akan lebih dari ~60 hari.
+    // Jika lebih, kemungkinan besar itu data error (bukan cuti sungguhan) — abaikan.
+    var durHari = Math.round((new Date(selesai+'T00:00:00') - new Date(mulai+'T00:00:00')) / 86400000) + 1;
+    if (durHari > 60) {
+      console.warn('Cuti diabaikan (durasi tidak wajar, ' + durHari + ' hari):', nik, nama, mulai, '→', selesai);
+      continue;
+    }
+
     recs.push({ nik: nik, nama: nama, kode: kode, mulai: mulai, selesai: selesai });
   }
   return recs;
