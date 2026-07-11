@@ -60,9 +60,13 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
 .ctrl-group{display:flex;align-items:center;gap:6px}
 .ctrl-group label{font-size:12px;color:#666}
 .controls select{border:1px solid #ddd;border-radius:6px;padding:6px 10px;font-size:13px;background:#fff}
-.btn-refresh{margin-left:auto;background:#e8f0fe;color:#1a73e8;border:1px solid #c5d8fc;
+.btn-refresh{background:#e8f0fe;color:#1a73e8;border:1px solid #c5d8fc;
   border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer}
 .btn-refresh:hover{background:#d2e3fc}
+.btn-back{margin-left:auto;background:#e6f4ea;color:#1e8e3e;border:1px solid #b7e1c1;
+  border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;
+  text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn-back:hover{background:#d3ecda}
 
 /* Map */
 .map-wrap{background:#fff;border-radius:10px;padding:16px;margin-bottom:16px;
@@ -160,6 +164,7 @@ tbody td{padding:9px 12px;vertical-align:middle}
         <option value="ok">Hanya Normal</option>
       </select>
     </div>
+    <a class="btn-back" href="https://btliglbja.site/absenst" target="_blank" rel="noopener">↩ Kembali ke Absen</a>
     <button class="btn-refresh" onclick="main()">&#8635; Refresh</button>
   </div>
 
