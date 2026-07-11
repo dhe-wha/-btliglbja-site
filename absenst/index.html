@@ -118,9 +118,11 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
 .cuti-ct{background:#fff3e0;border-left:3px solid #ffa000}
 .cuti-cp{background:#e3f2fd;border-left:3px solid #1e88e5}
 .cuti-ck{background:#e0f2f1;border-left:3px solid #00897b}
+.cuti-off{background:#eceff1;border-left:3px solid #90a4ae}
 .cuti-ct .day-num{color:#e65100}
 .cuti-cp .day-num{color:#1565c0}
 .cuti-ck .day-num{color:#00695c}
+.cuti-off .day-num{color:#546e7a}
 
 /* ── Tooltip ── */
 .tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
@@ -208,9 +210,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
 
     <div class="controls" style="box-shadow:none;padding:10px 0;margin:6px 0 12px">
       <div class="month-nav">
-        <button id="cuti-btn-prev" onclick="changeCutiMonth(-1)">&#8249;</button>
-        <span id="cuti-month-label">—</span>
-        <button id="cuti-btn-next" onclick="changeCutiMonth(1)">&#8250;</button>
+        <span style="font-weight:600;font-size:14px;color:#1a237e" id="cuti-month-label">—</span>
       </div>
       <span class="result-count" id="cuti-result-count"></span>
     </div>
@@ -253,10 +253,6 @@ var CUTI_LABEL = {
 var DATA        = null;
 var availMonths = [];
 var curMonthIdx = 0;
-
-// State — Realisasi Cuti
-var availCutiMonths = [];
-var curCutiMonthIdx = 0;
 
 // ── CSV Parser ────────────────────────────────────────────
 function parseCSV(text) {
@@ -466,21 +462,6 @@ function buildCutiData(cutiRows, jadwalDb) {
   });
 
   return { records: records, byNik: byNik, karyList: karyList };
-}
-
-function computeCutiMonths(cutiData) {
-  var mSet = {};
-  cutiData.records.forEach(function(r) {
-    var sy = parseInt(r.mulai.slice(0,4)),   sm = parseInt(r.mulai.slice(5,7));
-    var ey = parseInt(r.selesai.slice(0,4)), em = parseInt(r.selesai.slice(5,7));
-    var y = sy, m = sm;
-    while (y < ey || (y === ey && m <= em)) {
-      mSet[y + '-' + pad(m)] = 1;
-      m++;
-      if (m > 12) { m = 1; y++; }
-    }
-  });
-  return Object.keys(mSet).sort();
 }
 
 function recordOverlapsMonth(r, yr, mo) {
@@ -753,48 +734,28 @@ function buildCard(kary, yr, mo) {
 function changeMonth(dir) {
   curMonthIdx = Math.max(0, Math.min(availMonths.length-1, curMonthIdx+dir));
   renderAll();
-}
-
-// ── Realisasi Cuti: render & build card ────────────────────
-function populateCutiMonths() {
-  availCutiMonths = computeCutiMonths(DATA.cuti);
-  if (!availCutiMonths.length) { curCutiMonthIdx = 0; return; }
-
-  var now   = new Date();
-  var curYm = now.getFullYear() + '-' + pad(now.getMonth()+1);
-  var idx   = availCutiMonths.indexOf(curYm);
-  curCutiMonthIdx = idx >= 0 ? idx : availCutiMonths.length - 1;
-}
-
-function changeCutiMonth(dir) {
-  curCutiMonthIdx = Math.max(0, Math.min(availCutiMonths.length-1, curCutiMonthIdx+dir));
   renderCutiAll();
 }
 
+// ── Realisasi Cuti: render & build card (bulan ikut navigasi atas) ──
 function renderCutiAll() {
-  var prevBtn = document.getElementById('cuti-btn-prev');
-  var nextBtn = document.getElementById('cuti-btn-next');
   var label   = document.getElementById('cuti-month-label');
   var count   = document.getElementById('cuti-result-count');
   var container = document.getElementById('cuti-cards-container');
 
-  if (!DATA || !DATA.cuti || !availCutiMonths.length) {
+  if (!DATA || !DATA.cuti || !availMonths.length) {
     label.textContent = '—';
     count.textContent = '';
-    prevBtn.disabled = true;
-    nextBtn.disabled = true;
     container.innerHTML = '<p style="color:#888;font-size:13px;padding:8px 0">Tidak ada data realisasi cuti.</p>';
     return;
   }
 
-  var ym    = availCutiMonths[curCutiMonthIdx];
+  var ym    = availMonths[curMonthIdx];
   var parts = ym.split('-');
   var yr    = parseInt(parts[0]);
   var mo    = parseInt(parts[1]);
 
-  label.textContent   = BULAN_ID[mo] + ' ' + yr;
-  prevBtn.disabled     = (curCutiMonthIdx === 0);
-  nextBtn.disabled     = (curCutiMonthIdx === availCutiMonths.length - 1);
+  label.textContent = BULAN_ID[mo] + ' ' + yr;
 
   var filterDept = document.getElementById('sel-dept').value;
   var filterNik  = document.getElementById('sel-kary').value;
@@ -877,11 +838,17 @@ function buildCutiCard(kary, yr, mo) {
   for (var d = 1; d <= daysInM; d++) {
     var ymd  = yr + '-' + pad(mo) + '-' + pad(d);
     var kode = dayMap[ymd];
+    var jaR  = (DATA.jadwalDb[nik] && DATA.jadwalDb[nik].days[ymd])
+      ? DATA.jadwalDb[nik].days[ymd].toUpperCase() : '';
 
     var cell = document.createElement('div');
     var cls, st, tip;
 
-    if (kode) {
+    if (kode && jaR === 'OFF') {
+      cls = 'cuti-off';
+      st  = kode + ' - Off';
+      tip = (CUTI_LABEL[kode] || kode) + ' (bertepatan hari Off)';
+    } else if (kode) {
       cls = 'cuti-' + kode.toLowerCase();
       st  = kode;
       tip = CUTI_LABEL[kode] || kode;
@@ -958,8 +925,6 @@ function main() {
 
     populateDropdowns();
     renderAll();
-
-    populateCutiMonths();
     renderCutiAll();
 
     var now  = new Date();
