@@ -67,6 +67,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
 .d-absen{background:#e53935}
 .d-cuti{background:#ffa000}
 .d-sakit{background:#8e24aa}
+.d-izin{background:#039be5}
 .d-libur{background:#90a4ae}
 .d-wknd{background:#b0bec5}
 .d-nodata{background:#eceff1}
@@ -85,6 +86,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
 .st-a{background:#ffebee;color:#c62828}
 .st-c{background:#fff8e1;color:#e65100}
 .st-s{background:#f3e5f5;color:#6a1b9a}
+.st-i{background:#e1f5fe;color:#0277bd}
 .st-l{background:#eceff1;color:#546e7a}
 
 /* ── Day grid ── */
@@ -106,6 +108,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
 .s-absen{background:#ffebee;border-left:3px solid #e53935}
 .s-cuti {background:#fff8e1;border-left:3px solid #ffa000}
 .s-sakit{background:#f3e5f5;border-left:3px solid #8e24aa}
+.s-izin{background:#e1f5fe;border-left:3px solid #039be5}
 .s-libur{background:#eceff1;border-left:3px solid #90a4ae}
 .s-wknd {background:#f5f5f5;border-left:3px solid #bdbdbd;opacity:.6}
 .s-nodata{background:#fafafa;border-left:3px solid #e0e0e0;opacity:.5}
@@ -113,6 +116,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
 .s-absen .day-num{color:#c62828}
 .s-cuti  .day-num{color:#e65100}
 .s-sakit .day-num{color:#6a1b9a}
+.s-izin .day-num{color:#0277bd}
 
 /* Realisasi Cuti day colors (per kode) */
 .cuti-ct{background:#fff3e0;border-left:3px solid #ffa000}
@@ -192,6 +196,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333;min-
     <div class="legend-item"><div class="dot d-absen"></div>Absen</div>
     <div class="legend-item"><div class="dot d-cuti"></div>Cuti (CT/CP/CK)</div>
     <div class="legend-item"><div class="dot d-sakit"></div>Sakit (S)</div>
+    <div class="legend-item"><div class="dot d-izin"></div>Izin (I)</div>
     <div class="legend-item"><div class="dot d-libur"></div>Libur (Off)</div>
     <div class="legend-item"><div class="dot d-wknd"></div>Sabtu/Minggu</div>
     <div class="legend-item"><div class="dot d-nodata"></div>Tidak ada data</div>
@@ -242,6 +247,7 @@ var HARI = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 var CUTI_CODES  = {CT:1, CP:1, CK:1};
 var SAKIT_CODES = {S:1};
 var DINAS_CODES = {OD:1};
+var IZIN_CODES  = {I:1};
 
 var CUTI_LABEL = {
   CT: 'Cuti Tahunan',
@@ -601,7 +607,7 @@ function buildCard(kary, yr, mo) {
   var firstDow = new Date(yr, mo-1, 1).getDay();
 
   // Stats
-  var cHadir=0, cAbsen=0, cCuti=0, cSakit=0, cLibur=0;
+  var cHadir=0, cAbsen=0, cCuti=0, cSakit=0, cIzin=0, cLibur=0;
   for (var d=1; d<=daysInM; d++) {
     var ymd = yr + '-' + pad(mo) + '-' + pad(d);
     var jR  = (jDays[ymd] || '').toUpperCase();
@@ -611,6 +617,7 @@ function buildCard(kary, yr, mo) {
     if (jR === 'OFF' || (wk && !jR && !aR)) { cLibur++; }
     else if (CUTI_CODES[jR])  { cCuti++;  }
     else if (SAKIT_CODES[jR]) { cSakit++; }
+    else if (IZIN_CODES[jR])  { cIzin++;  }
     else if (DINAS_CODES[jR]) { cHadir++; }
     else if (aR)               { cHadir++; }
     else if (jR === 'ON')      { cAbsen++; }
@@ -633,6 +640,7 @@ function buildCard(kary, yr, mo) {
         '<div class="stat st-a">Absen: '  + cAbsen + '</div>' +
         (cCuti  ? '<div class="stat st-c">Cuti: '  + cCuti  + '</div>' : '') +
         (cSakit ? '<div class="stat st-s">Sakit: ' + cSakit + '</div>' : '') +
+        (cIzin  ? '<div class="stat st-i">Izin: '  + cIzin  + '</div>' : '') +
         '<div class="stat st-l">Off: '    + cLibur + '</div>' +
       '</div>' +
     '</div>';
@@ -678,6 +686,9 @@ function buildCard(kary, yr, mo) {
     } else if (SAKIT_CODES[jR]) {
       cls = 's-sakit'; st = 'Sakit';
       tipLines = ['Status: Sakit'];
+    } else if (IZIN_CODES[jR]) {
+      cls = 's-izin'; st = 'Izin';
+      tipLines = ['Status: Izin'];
     } else if (DINAS_CODES[jR]) {
       cls = 's-hadir'; st = 'Dinas';
       tipLines = aR
