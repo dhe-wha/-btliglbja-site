@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Halaman Karir Telah Pindah | BJA</title>
+  <meta http-equiv="refresh" content="5;url=https://career.btliglbja.site/">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #F8FAFC;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 48px 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      border: 1px solid #E2E8F0;
+    }
+    .icon { font-size: 48px; margin-bottom: 20px; }
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #1E293B;
+      margin-bottom: 12px;
+    }
+    p {
+      font-size: 14px;
+      color: #64748B;
+      line-height: 1.7;
+      margin-bottom: 8px;
+    }
+    .new-url {
+      display: inline-block;
+      background: #E8F5E9;
+      color: #1B5E20;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      margin: 16px 0 24px;
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .new-url:hover { background: #C8E6C9; }
+    .btn {
+      display: inline-block;
+      background: #1B5E20;
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 12px 28px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .btn:hover { background: #0a3d0a; }
+    .counter {
+      font-size: 13px;
+      color: #94A3B8;
+      margin-top: 20px;
+    }
+    .counter span {
+      font-weight: 700;
+      color: #1B5E20;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">📢</div>
+    <h1>Halaman Karir Telah Pindah</h1>
+    <p>Halaman karir PT Biomasa Jaya Abadi kini telah berpindah ke alamat baru:</p>
+    <a class="new-url" href="https://career.btliglbja.site/">career.btliglbja.site</a>
+    <br>
+    <a class="btn" href="https://career.btliglbja.site/">Kunjungi Halaman Baru →</a>
+    <p class="counter">Anda akan diarahkan otomatis dalam <span id="detik">5</span> detik...</p>
+  </div>
+
+  <script>
+    var s = 5;
+    var el = document.getElementById('detik');
+    var timer = setInterval(function(){
+      s--;
+      el.textContent = s;
+      if (s <= 0) {
+        clearInterval(timer);
+        window.location.href = 'https://career.btliglbja.site/';
+      }
+    }, 1000);
+  </script>
+</body>
+</html>
